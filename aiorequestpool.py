@@ -30,6 +30,10 @@ class AioRequest():
     async def request(self, method, url, **kwargs):
         try:
             log(self, "Getting page from %s..." % url)
+            if kwargs['proxy_auth']:
+                kwargs['proxy_auth'] = aiohttp.BasicAuth(kwargs['proxy_auth']['user'], kwargs['proxy_auth']['password'])
+            else:
+                del kwargs['proxy_auth']
             start = time.time()
             async with method(url, **kwargs) as response:
                 end = time.time()
@@ -44,21 +48,21 @@ class AioRequest():
             res = AioResponse(url, 'cannot connect to server %s' % url, None, str(e))
         return res
 
-    async def get(self, url, headers = None):
-        async with aiohttp.ClientSession() as session:
-            return await self.request(session.get, url, headers = headers)
+    async def get(self, url, headers = None, cookies = None, proxy = None, proxy_auth = None, **kwargs):
+        async with aiohttp.ClientSession(cookies = cookies) as session:
+            return await self.request(session.get, url, headers = headers, proxy = proxy, proxy_auth = proxy_auth)
 
-    async def post(self, url, headers = None, data = None):
-        async with aiohttp.ClientSession() as session:
-            return await self.request(session.post, url, headers = headers, data = data)
+    async def post(self, url, headers = None, data = None, cookies = None, proxy = None, proxy_auth = None, **kwargs):
+        async with aiohttp.ClientSession(cookies = cookies) as session:
+            return await self.request(session.post, url, headers = headers, data = data, proxy = proxy, proxy_auth = proxy_auth)
 
-    async def put(self, url, headers = None, data = None):
-        async with aiohttp.ClientSession() as session:
-            return await self.request(session.put, url, headers = headers, data = data)
+    async def put(self, url, headers = None, data = None, cookies = None, proxy = None, proxy_auth = None, **kwargs):
+        async with aiohttp.ClientSession(cookies = cookies) as session:
+            return await self.request(session.put, url, headers = headers, data = data, proxy = proxy, proxy_auth = proxy_auth)
     
-    async def delete(self, url, headers = None):
-        async with aiohttp.ClientSession() as session:
-            return await self.request(session.delete, url, headers = headers)
+    async def delete(self, url, headers = None, cookies = None, proxy = None, proxy_auth = None, **kwargs):
+        async with aiohttp.ClientSession(cookies = cookies) as session:
+            return await self.request(session.delete, url, headers = headers, proxy = proxy, proxy_auth = proxy_auth)
 
 
 class AioRequestPool:
@@ -119,13 +123,13 @@ class AioRequestPool:
         browser = AioRequest(debug = self.debug)
         async with self.sem:
             if request['method'].lower() == 'get':
-                response = await browser.get(request['url'], headers = request['headers'])
+                response = await browser.get(**request)
             elif request['method'].lower() == 'post':
-                response = await browser.post(request['url'], headers = request['headers'], data = request['data'])
+                response = await browser.post(**request)
             elif request['method'].lower() == 'put':
-                response = await browser.put(request['url'], headers = request['headers'], data = request['data'])
+                response = await browser.put(**request)
             elif request['method'].lower() == 'delete':
-                response = await browser.delete(request['url'], headers = request['headers'])
+                response = await browser.delete(**request)
             data = self.callback(request, response)
             self.result.append(data)
             self.pairs.append({
